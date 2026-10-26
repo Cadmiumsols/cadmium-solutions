@@ -74,14 +74,17 @@ body.menu-open {
 }
 
 /* Micro-noise film grain for tactile glass refraction */
+/* Hardware-accelerated, zero-lag background pass */
 body::before {
   content: "";
   position: fixed;
   inset: 0;
   pointer-events: none;
   z-index: 9999;
-  opacity: 0.032;
-  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E");
+  opacity: 0.02;
+  background-image: radial-gradient(#fff 1px, transparent 1px);
+  background-size: 32px 32px;
+  transform: translateZ(0);
 }
 
 a {
@@ -156,6 +159,7 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
   position: sticky;
   z-index: 100;
   top: 0;
+  transform: translateZ(0);
   background: rgba(6, 8, 7, 0.72);
   backdrop-filter: blur(28px) saturate(210%);
   -webkit-backdrop-filter: blur(28px) saturate(210%);
@@ -719,6 +723,10 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
   object-fit: contain;
   object-position: center;
   transition: transform 0.6s var(--ease-out);
+  /* Push image rendering directly to GPU */
+  transform: translate3d(0, 0, 0);
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
 }
 
 @media (hover: hover) {
@@ -1225,6 +1233,10 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
   object-fit: cover;
   object-position: center top;
   transition: transform 0.5s var(--ease-out);
+  /* Push avatar decoding to GPU */
+  transform: translate3d(0, 0, 0);
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
 }
 
 .founder-card:hover .founder-portrait img {
@@ -1566,7 +1578,6 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
   opacity: 0;
   transform: translateY(22px);
   transition: opacity 0.75s var(--ease-out), transform 0.75s var(--ease-out);
-  will-change: opacity, transform;
 }
 
 .reveal.is-visible {
