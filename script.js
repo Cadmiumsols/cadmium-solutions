@@ -1,39 +1,64 @@
+/* ==========================================================================
+   CADMIUM SOLUTIONS — 2026 APPLE-INSPIRED INTERACTION ENGINE
+   Zero HTML changes. Includes:
+   - Spotlight Cursor Glow Shader
+   - Smooth Scroll & Header Physics
+   - VisionOS Spring States
+   - Accessible Drawer Navigation
+   - Clipboard Fallback
+   - Web3Forms Integration
+   ========================================================================== */
+
 document.addEventListener("DOMContentLoaded", () => {
   "use strict";
 
-  const prefersReducedMotion = window.matchMedia(
-    "(prefers-reduced-motion: reduce)"
-  ).matches;
-
+  const prefersReducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
   const scrollBehavior = prefersReducedMotion ? "auto" : "smooth";
 
-  /* =========================================
-     ELEMENTS
-  ========================================= */
-
+  /* =====================================================
+     DOM REFERENCES
+  ===================================================== */
   const header = document.querySelector(".site-header");
   const menuToggle = document.querySelector(".menu-toggle");
   const primaryNav = document.querySelector(".primary-nav");
-
-  const backToTopLinks = document.querySelectorAll(
-    ".back-top, [data-back-to-top], a[href='#top']"
-  );
-
   const revealElements = document.querySelectorAll(".reveal");
+  const inquiryForm = document.getElementById("inquiry-form");
+  const formNote = document.getElementById("form-note");
+  const submitBtn = document.getElementById("submit-btn");
+  const copyToast = document.getElementById("copy-toast");
+  const email = "cadmiumsolutions@gmail.com";
 
-  /* =========================================
-     MOBILE NAVIGATION
-  ========================================= */
+  /* =====================================================
+     APPLE-GRADE CURSOR SPOTLIGHT TRACKING
+     Calculates smooth relative mouse coordinates for liquid glass surfaces
+  ===================================================== */
+  if (!prefersReducedMotion && window.matchMedia("(hover: hover)").matches) {
+    const spotlightCards = document.querySelectorAll(
+      ".creative-media, .service-row, .founder-card, .principle, .about-emblem"
+    );
 
+    spotlightCards.forEach((card) => {
+      card.addEventListener("mousemove", (event) => {
+        const rect = card.getBoundingClientRect();
+        const x = event.clientX - rect.left;
+        const y = event.clientY - rect.top;
+
+        card.style.setProperty("--mouse-x", `${x}px`);
+        card.style.setProperty("--mouse-y", `${y}px`);
+      });
+    });
+  }
+
+  /* =====================================================
+     MOBILE NAVIGATION DRAWER
+  ===================================================== */
   function closeMobileMenu() {
     if (!menuToggle || !primaryNav) return;
 
     menuToggle.classList.remove("is-active");
     primaryNav.classList.remove("is-open");
-
     menuToggle.setAttribute("aria-expanded", "false");
     menuToggle.setAttribute("aria-label", "Open navigation menu");
-
     document.body.classList.remove("menu-open");
   }
 
@@ -42,79 +67,74 @@ document.addEventListener("DOMContentLoaded", () => {
 
     menuToggle.classList.add("is-active");
     primaryNav.classList.add("is-open");
-
     menuToggle.setAttribute("aria-expanded", "true");
     menuToggle.setAttribute("aria-label", "Close navigation menu");
-
     document.body.classList.add("menu-open");
   }
 
   if (menuToggle && primaryNav) {
-    menuToggle.setAttribute(
-      "aria-expanded",
-      primaryNav.classList.contains("is-open") ? "true" : "false"
-    );
-
-    menuToggle.setAttribute("aria-controls", "primary-nav");
+    menuToggle.setAttribute("aria-controls", primaryNav.id || "primary-nav");
+    menuToggle.setAttribute("aria-expanded", primaryNav.classList.contains("is-open") ? "true" : "false");
 
     menuToggle.addEventListener("click", () => {
       const isOpen = menuToggle.getAttribute("aria-expanded") === "true";
-
-      if (isOpen) {
-        closeMobileMenu();
-      } else {
-        openMobileMenu();
-      }
+      isOpen ? closeMobileMenu() : openMobileMenu();
     });
 
     primaryNav.querySelectorAll("a").forEach((link) => {
-      link.addEventListener("click", () => {
-        closeMobileMenu();
-      });
+      link.addEventListener("click", closeMobileMenu);
     });
 
     document.addEventListener("keydown", (event) => {
       if (event.key === "Escape") {
         closeMobileMenu();
+        if (menuToggle) menuToggle.focus();
       }
     });
 
     document.addEventListener("click", (event) => {
-      const clickedInsideNav = primaryNav.contains(event.target);
-      const clickedToggle = menuToggle.contains(event.target);
-
-      if (!clickedInsideNav && !clickedToggle) {
+      const target = event.target;
+      if (!(target instanceof Node)) return;
+      if (!primaryNav.contains(target) && !menuToggle.contains(target)) {
         closeMobileMenu();
       }
     });
 
-    window.addEventListener("resize", () => {
-      if (window.innerWidth > 900) {
-        closeMobileMenu();
-      }
-    });
+    window.addEventListener(
+      "resize",
+      () => {
+        if (window.innerWidth > 768) {
+          closeMobileMenu();
+        }
+      },
+      { passive: true }
+    );
   }
 
-  /* =========================================
-     STICKY HEADER
-  ========================================= */
+  /* =====================================================
+     STICKY HEADER CONTROLLER
+  ===================================================== */
+  let previousScrolledState = null;
 
   function updateHeader() {
     if (!header) return;
-    header.classList.toggle("scrolled", window.scrollY > 24);
+    const isScrolled = window.scrollY > 20;
+
+    if (isScrolled !== previousScrolledState) {
+      header.classList.toggle("scrolled", isScrolled);
+      previousScrolledState = isScrolled;
+    }
   }
 
   updateHeader();
   window.addEventListener("scroll", updateHeader, { passive: true });
 
-  /* =========================================
-     SMOOTH ANCHOR NAVIGATION
-  ========================================= */
-
+  /* =====================================================
+     ACCESSIBLE ANCHOR SMOOTH SCROLLING
+  ===================================================== */
   document.querySelectorAll('a[href^="#"]').forEach((link) => {
     link.addEventListener("click", (event) => {
       const href = link.getAttribute("href");
-
       if (!href || href === "#") return;
 
       let target;
@@ -127,6 +147,7 @@ document.addEventListener("DOMContentLoaded", () => {
       if (!target) return;
 
       event.preventDefault();
+      closeMobileMenu();
 
       if (href === "#top" || href === "#home") {
         window.scrollTo({
@@ -134,102 +155,104 @@ document.addEventListener("DOMContentLoaded", () => {
           behavior: scrollBehavior,
         });
       } else {
-        const headerHeight = header
-          ? header.getBoundingClientRect().height
-          : 0;
-
-        const targetPosition =
-          target.getBoundingClientRect().top +
-          window.scrollY -
-          headerHeight -
-          16;
+        const headerHeight = header ? header.getBoundingClientRect().height : 0;
+        const targetTop = target.getBoundingClientRect().top + window.scrollY - headerHeight - 12;
 
         window.scrollTo({
-          top: Math.max(0, targetPosition),
+          top: Math.max(0, targetTop),
           behavior: scrollBehavior,
         });
       }
 
-      closeMobileMenu();
-    });
-  });
-
-  /* =========================================
-     BACK TO TOP
-  ========================================= */
-
-  backToTopLinks.forEach((link) => {
-    link.addEventListener("click", (event) => {
-      event.preventDefault();
-
-      closeMobileMenu();
-
-      window.scrollTo({
-        top: 0,
-        behavior: scrollBehavior,
-      });
-
-      if (window.history.replaceState) {
+      if (window.history && window.history.replaceState) {
         window.history.replaceState(
           null,
           "",
-          window.location.pathname + window.location.search
+          href === "#top" ? window.location.pathname + window.location.search : href
         );
       }
     });
   });
 
-  /* =========================================
-     EMAIL COPY TO CLIPBOARD
-  ========================================= */
-
+  /* =====================================================
+     EMAIL CLIPBOARD ACTION (With Fallback)
+  ===================================================== */
   const emailTriggers = document.querySelectorAll(
     ".email-copy, a[href^='mailto:'], [data-email-copy], #email-copy-btn"
   );
-  const copyToast = document.getElementById("copy-toast");
+
+  async function copyText(text) {
+    if (navigator.clipboard && window.isSecureContext) {
+      await navigator.clipboard.writeText(text);
+      return true;
+    }
+
+    const temporaryInput = document.createElement("textarea");
+    temporaryInput.value = text;
+    temporaryInput.setAttribute("readonly", "");
+    temporaryInput.style.position = "fixed";
+    temporaryInput.style.opacity = "0";
+    temporaryInput.style.pointerEvents = "none";
+
+    document.body.appendChild(temporaryInput);
+    temporaryInput.select();
+
+    let copied = false;
+    try {
+      copied = document.execCommand("copy");
+    } catch {
+      copied = false;
+    } finally {
+      temporaryInput.remove();
+    }
+
+    if (!copied) {
+      throw new Error("Clipboard unavailable");
+    }
+
+    return true;
+  }
 
   emailTriggers.forEach((trigger) => {
-    trigger.addEventListener("click", (e) => {
-      e.preventDefault();
-      const email = "cadmiumsolutions@gmail.com";
+    trigger.addEventListener("click", async (event) => {
+      event.preventDefault();
 
-      navigator.clipboard
-        .writeText(email)
-        .then(() => {
-          if (copyToast) {
-            copyToast.style.display = "inline";
-            setTimeout(() => {
-              copyToast.style.display = "none";
-            }, 2500);
-          } else {
-            const originalText = trigger.textContent;
-            trigger.textContent = "COPIED TO CLIPBOARD! ✓";
-            trigger.classList.add("copied-success");
+      try {
+        await copyText(email);
 
-            setTimeout(() => {
-              trigger.textContent = originalText;
-              trigger.classList.remove("copied-success");
-            }, 2500);
-          }
-        })
-        .catch(() => {
-          window.location.href = `mailto:${email}`;
-        });
+        if (copyToast) {
+          copyToast.textContent = "Copied to clipboard!";
+          copyToast.style.display = "inline";
+
+          window.setTimeout(() => {
+            copyToast.style.display = "none";
+          }, 2500);
+        } else {
+          const originalText = trigger.textContent;
+          trigger.textContent = "COPIED TO CLIPBOARD! ✓";
+          trigger.classList.add("copied-success");
+
+          window.setTimeout(() => {
+            trigger.textContent = originalText;
+            trigger.classList.remove("copied-success");
+          }, 2500);
+        }
+      } catch {
+        window.location.href = `mailto:${email}`;
+      }
     });
   });
 
-  /* =========================================
-     SCROLL REVEAL ANIMATIONS
-  ========================================= */
-
+  /* =====================================================
+     SCROLL REVEALS (Intersection Observer)
+  ===================================================== */
   if ("IntersectionObserver" in window && !prefersReducedMotion) {
     const revealObserver = new IntersectionObserver(
       (entries, observer) => {
         entries.forEach((entry) => {
-          if (entry.isIntersecting) {
-            entry.target.classList.add("is-visible");
-            observer.unobserve(entry.target);
-          }
+          if (!entry.isIntersecting) return;
+          entry.target.classList.add("is-visible");
+          observer.unobserve(entry.target);
         });
       },
       {
@@ -247,68 +270,45 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   }
 
-  /* =========================================
-     PROCESS TIMELINE GREEN GLOW & PROGRESS
-  ========================================= */
-
-  const processSection = document.querySelector(
-    "#process, .process-section"
-  );
-
+  /* =====================================================
+     PROCESS TIMELINE PROGRESS (RAF-Throttled)
+  ===================================================== */
+  const processSection = document.querySelector("#process, .process-section");
   const processTrack = document.querySelector(".process-track");
+  const processProgress = document.querySelector(".process-line span, .process-line-progress");
+  const processSteps = document.querySelectorAll(".process-step, [data-process-step]");
 
-  const processProgress = document.querySelector(
-    ".process-line span, .process-line-progress"
-  );
+  let processFrameRequested = false;
 
-  const processSteps = document.querySelectorAll(
-    ".process-step, [data-process-step]"
-  );
-
-  function updateProcessProgress() {
+  function renderProcessProgress() {
+    processFrameRequested = false;
     if (!processSection) return;
 
     const rect = processSection.getBoundingClientRect();
     const viewportHeight = window.innerHeight;
     const sectionHeight = processSection.offsetHeight;
-
-    // Smoothly calculates scroll progression through the process section
     const startOffset = viewportHeight * 0.72;
-    const totalDistance = Math.max(1, sectionHeight + viewportHeight * 0.1);
-    const travelled = startOffset - rect.top;
-    const progress = Math.min(1, Math.max(0, travelled / totalDistance));
 
-    const isMobile = window.innerWidth <= 700;
+    const totalDistance = Math.max(1, sectionHeight + viewportHeight * 0.1);
+    const progress = Math.min(1, Math.max(0, (startOffset - rect.top) / totalDistance));
+    const isMobile = window.innerWidth <= 768;
 
     if (processTrack) {
-      if (progress > 0.05) {
-        processTrack.classList.add("is-active");
-      } else {
-        processTrack.classList.remove("is-active");
-      }
+      processTrack.classList.toggle("is-active", progress > 0.05);
     }
 
     if (processProgress) {
-      if (isMobile) {
-        processProgress.style.transformOrigin = "top center";
-        processProgress.style.transform = `scaleY(${progress})`;
-      } else {
-        processProgress.style.transformOrigin = "left center";
-        processProgress.style.transform = `scaleX(${progress})`;
-      }
-
-      if (progress > 0.02) {
-        processProgress.classList.add("is-glowing");
-      } else {
-        processProgress.classList.remove("is-glowing");
-      }
+      processProgress.style.transformOrigin = isMobile ? "top center" : "left center";
+      processProgress.style.transform = isMobile ? `scaleY(${progress})` : `scaleX(${progress})`;
+      processProgress.classList.toggle("is-glowing", progress > 0.02);
     }
 
     if (processSteps.length) {
+      const denominator = Math.max(1, processSteps.length - 0.75);
+
       processSteps.forEach((step, index) => {
-        const stepThreshold = index / (processSteps.length - 0.75);
-        const isActive = progress >= stepThreshold;
-        const isPassed = progress > (index + 0.8) / (processSteps.length - 0.75);
+        const isActive = progress >= index / denominator;
+        const isPassed = progress > (index + 0.8) / denominator;
 
         step.classList.toggle("is-active", isActive);
         step.classList.toggle("is-passed", isPassed);
@@ -316,34 +316,41 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   }
 
-  updateProcessProgress();
-  window.addEventListener("scroll", updateProcessProgress, { passive: true });
-  window.addEventListener("resize", updateProcessProgress, { passive: true });
+  function scheduleProcessProgress() {
+    if (processFrameRequested) return;
+    processFrameRequested = true;
+    window.requestAnimationFrame(renderProcessProgress);
+  }
 
-  /* =========================================
-     WEB3FORMS CONTACT FORM SUBMISSION
-  ========================================= */
+  renderProcessProgress();
+  window.addEventListener("scroll", scheduleProcessProgress, { passive: true });
+  window.addEventListener("resize", scheduleProcessProgress, { passive: true });
 
-  const inquiryForm = document.getElementById("inquiry-form");
-  const formNote = document.getElementById("form-note");
-  const submitBtn = document.getElementById("submit-btn");
-
+  /* =====================================================
+     WEB3FORMS CONTACT SUBMISSION HANDLER
+  ===================================================== */
   if (inquiryForm) {
-    inquiryForm.addEventListener("submit", async (e) => {
-      e.preventDefault();
-
-      if (submitBtn) {
-        submitBtn.disabled = true;
-        submitBtn.innerHTML = `Sending inquiry... <span aria-hidden="true">⏳</span>`;
-      }
+    inquiryForm.addEventListener("submit", async (event) => {
+      event.preventDefault();
+      if (submitBtn && submitBtn.disabled) return;
 
       if (formNote) {
         formNote.textContent = "";
+        formNote.removeAttribute("style");
       }
 
       const formData = new FormData(inquiryForm);
-      const object = Object.fromEntries(formData);
-      const json = JSON.stringify(object);
+
+      if (formData.get("botcheck")) return;
+
+      formData.set("page_url", window.location.href);
+      formData.set("submitted_at", new Date().toISOString());
+
+      if (submitBtn) {
+        submitBtn.disabled = true;
+        submitBtn.setAttribute("aria-busy", "true");
+        submitBtn.innerHTML = 'Sending inquiry... <span aria-hidden="true">⏳</span>';
+      }
 
       try {
         const response = await fetch("https://api.web3forms.com/submit", {
@@ -352,37 +359,49 @@ document.addEventListener("DOMContentLoaded", () => {
             "Content-Type": "application/json",
             Accept: "application/json",
           },
-          body: json,
+          body: JSON.stringify(Object.fromEntries(formData)),
         });
 
-        const result = await response.json();
-
-        if (response.status === 200 && result.success) {
-          formNote.textContent = "✓ Inquired successfully! Your message has been sent to Cadmium. We will respond soon.";
-          formNote.style.color = "var(--green)";
-          inquiryForm.reset();
-        } else {
-          formNote.textContent = result.message || "Failed to send. Please reach out via WhatsApp or direct email.";
-          formNote.style.color = "#ff4444";
+        let result;
+        try {
+          result = await response.json();
+        } catch {
+          throw new Error("The form service returned an unreadable response.");
         }
+
+        if (!response.ok || !result.success) {
+          throw new Error(result.message || "Your inquiry could not be sent. Please try again.");
+        }
+
+        if (formNote) {
+          formNote.textContent = "✓ Inquiry sent successfully. Cadmium Solutions will be in touch shortly.";
+          formNote.style.color = "var(--green)";
+        }
+
+        inquiryForm.reset();
       } catch (error) {
-        formNote.textContent = "Network error. Please message us directly at cadmiumsolutions@gmail.com.";
-        formNote.style.color = "#ff4444";
+        if (formNote) {
+          formNote.textContent =
+            error instanceof Error && error.message
+              ? `${error.message} You can also reach us directly at cadmiumsolutions@gmail.com.`
+              : "Network error. Please email cadmiumsolutions@gmail.com directly.";
+          formNote.style.color = "#ff6b6b";
+        }
       } finally {
         if (submitBtn) {
           submitBtn.disabled = false;
-          submitBtn.innerHTML = `Send inquiry <span aria-hidden="true">↗</span>`;
+          submitBtn.removeAttribute("aria-busy");
+          submitBtn.innerHTML = 'Send inquiry <span aria-hidden="true">↗</span>';
         }
       }
     });
   }
 
-  /* =========================================
-     FOOTER COPYRIGHT YEAR
-  ========================================= */
-
+  /* =====================================================
+     FOOTER COPYRIGHT
+  ===================================================== */
   const yearElement = document.getElementById("year");
   if (yearElement) {
-    yearElement.textContent = new Date().getFullYear();
+    yearElement.textContent = String(new Date().getFullYear());
   }
 });
